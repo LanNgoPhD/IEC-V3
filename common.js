@@ -1,0 +1,12 @@
+const API_BASE=window.IEC_V3_API_BASE||"";
+let IEC_CONFIG=null;
+function qp(name){return String(new URLSearchParams(location.search).get(name)||"").trim()}
+function requireContext(){const ctx={classId:qp("class"),studentId:qp("student"),runId:qp("run"),token:qp("token")};if(!ctx.classId||!ctx.studentId||!ctx.runId||!ctx.token)throw new Error("Liên kết không đầy đủ. Hãy mở đúng link cá nhân được gửi trong email.");return ctx}
+function jsonp(url,timeoutMs=30000){return new Promise((resolve,reject)=>{const cb="__iec3_"+Date.now()+"_"+Math.floor(Math.random()*1e6),s=document.createElement("script"),t=setTimeout(()=>done(new Error("Hết thời gian chờ hệ thống phản hồi")),timeoutMs);function done(err,data){clearTimeout(t);try{delete window[cb]}catch(e){}s.remove();err?reject(err):resolve(data)}window[cb]=d=>done(null,d);s.onerror=()=>done(new Error("Không tải được dữ liệu từ hệ thống"));s.src=url+(url.includes("?")?"&":"?")+"callback="+encodeURIComponent(cb)+"&_="+Date.now();document.head.appendChild(s)})}
+async function loadClientConfig(){if(IEC_CONFIG)return IEC_CONFIG;if(!API_BASE||API_BASE.includes("PASTE_"))throw new Error("V3 chưa cấu hình API URL");const d=await jsonp(API_BASE+"?api=client-config");if(!d||d.ok===false)throw new Error(d&&d.error||"Không tải được cấu hình");IEC_CONFIG=d;return d}
+function postPayload(payload){const f=document.createElement("form");f.method="POST";f.action=API_BASE;f.target="submitFrame";const i=document.createElement("input");i.type="hidden";i.name="payload";i.value=JSON.stringify(payload);f.appendChild(i);document.body.appendChild(f);f.submit();f.remove()}
+function clientKey(prefix){return prefix+"-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
+function setMsg(el,text,type){el.textContent=text||"";el.className="msg"+(type?" "+type:"")}
+function fmtSec(v){v=Number(v||0);const m=Math.floor(v/60),s=Math.max(0,Math.floor(v%60));return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")}
+function ttsSpeak(text,rate=1,repeat=1){if(!("speechSynthesis" in window)){alert("Thiết bị này không hỗ trợ Text-to-Speech.");return}window.speechSynthesis.cancel();let left=Math.max(1,Number(repeat)||1);const say=()=>{const u=new SpeechSynthesisUtterance(String(text||""));u.lang=String((IEC_CONFIG&&IEC_CONFIG.TTS_LANG)||"en-US");u.rate=Number(rate)||1;u.onend=()=>{left--;if(left>0)setTimeout(say,180)};window.speechSynthesis.speak(u)};say()}
+function stopTts(){try{window.speechSynthesis.cancel()}catch(e){}}
